@@ -10,15 +10,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch("/activities");
       const activities = await response.json();
 
-      // Clear loading message
+      // Clear loading message and dropdown
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
         const activityCard = document.createElement("div");
         activityCard.className = "activity-card";
 
-        const spotsLeft = details.max_participants - details.participants.length;
+        const spotsLeft = details.max_participants - (details.participants?.length || 0);
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
@@ -27,6 +28,46 @@ document.addEventListener("DOMContentLoaded", () => {
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
         `;
 
+        // Participants list
+        const participantsDiv = document.createElement("div");
+        participantsDiv.className = "participants";
+
+        const participantsTitle = document.createElement("p");
+        participantsTitle.className = "participants-title";
+        participantsTitle.textContent = "Participants:";
+
+        participantsDiv.appendChild(participantsTitle);
+
+        const participantsArray = Array.isArray(details.participants) ? details.participants : [];
+
+        if (participantsArray.length === 0) {
+          const noParticipants = document.createElement("p");
+          noParticipants.textContent = "No participants yet.";
+          participantsDiv.appendChild(noParticipants);
+        } else {
+          const list = document.createElement("ul");
+          list.className = "participants-list";
+
+          participantsArray.forEach((p) => {
+            const li = document.createElement("li");
+
+            if (!p) {
+              li.textContent = "Unknown participant";
+            } else if (typeof p === "string") {
+              li.textContent = p;
+            } else if (typeof p === "object") {
+              li.textContent = p.email || p.name || JSON.stringify(p);
+            } else {
+              li.textContent = String(p);
+            }
+
+            list.appendChild(li);
+          });
+
+          participantsDiv.appendChild(list);
+        }
+
+        activityCard.appendChild(participantsDiv);
         activitiesList.appendChild(activityCard);
 
         // Add option to select dropdown
@@ -62,6 +103,9 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+
+        // Refresh activities so participants list updates
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
